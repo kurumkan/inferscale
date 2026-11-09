@@ -1,0 +1,11 @@
+size,method,run,elapsed_ns
+64,manual,1,41231224
+64,manual,2,42522326
+64,manual,3,41402756
+64,manual,4,41163824
+64,manual,5,41256325
+64,numpy,1,18183
+64,numpy,2,17806
+64,numpy,3,17889
+64,numpy,4,17812
+64,numpy,5,17919
