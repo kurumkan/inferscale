@@ -16,14 +16,16 @@ params_true = np.array([
 # (1000,)
 y = params_true[1, 0] * x[:, 0].flatten() + params_true[2, 0] * x[:, 1].flatten() + params_true[0, 0] * ones_column.flatten() + eps
 
-def train(x, y, batch_size, epochs, learning_rate):
+def train(x, y, batch_size, epochs, learning_rate, mse_limit):
     ones_column = np.ones((len(x), 1))
     params = np.ones((3, 1)) # (3, 1)
     params[0] = 0
     x_matrix = np.hstack([ones_column, x]) # (1000, 3)
+    updates = 0   
+    rng = np.random.default_rng(42)
 
     loss_history = []
-    for epoch in range(epochs):         # 30 эпох
+    for epoch in range(epochs):      
         indices = rng.permutation(len(x))   # перемешиваем индексы  
 
         for start in range(0, len(y), batch_size):  # 32 итерации за эпоху
@@ -39,24 +41,34 @@ def train(x, y, batch_size, epochs, learning_rate):
     
             params[0] = params[0] - learning_rate * grad_b
             params[1:] = params[1: ] - learning_rate * grad_w
+            updates += 1
 
         y_predicted = x_matrix @ params
         diff = (y_predicted.flatten() - y).reshape(-1, 1)
         mse = np.mean(diff ** 2) 
         loss_history.append(float(mse))
 
-    return params, loss_history
+        if not np.isfinite(mse):
+            return params, loss_history, epoch + 1, updates, False            
+        if mse <= mse_limit:
+            return params, loss_history, epoch + 1, updates, True            
+
+    return params, loss_history, epochs, updates, False
            
 for batch_size in [1000, 32, 1]:
     for learning_rate in [0.01, 0.1, 0.5, 1.0]:
         start = time.perf_counter()
 
-        weights, history = train(x, y, batch_size, 1000, learning_rate)
+        weights, history, epochs, updates_count, success = train(x, y, batch_size, 1000, learning_rate, 0.0105)
 
         elapsed = time.perf_counter() - start
 
         print(
+            "reached precision?", success,
+            "learning rate", learning_rate,
             "batch_size:", batch_size,
             "final MSE:", history[-1],
-            "seconds:", elapsed
+            "seconds:", elapsed,
+            "epochs:", epochs,
+            "updates count:", updates_count
         )
