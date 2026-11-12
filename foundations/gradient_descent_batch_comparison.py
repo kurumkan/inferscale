@@ -13,18 +13,31 @@ params_true = np.array([
     [-3]
 ])
 
-# (1000,)
+# (N,)
 y = params_true[1, 0] * x[:, 0].flatten() + params_true[2, 0] * x[:, 1].flatten() + params_true[0, 0] * ones_column.flatten() + eps
 
-def train(x, y, batch_size, epochs, learning_rate, mse_limit):
-    ones_column = np.ones((len(x), 1))
+def train(x_full, y_full, batch_size, epochs, learning_rate, mse_limit, train_ratio = 0.8):
+    rng = np.random.default_rng(42)
+    indices = rng.permutation(len(x_full))   # перемешиваем индексы  
+    x_shuffled = x_full[indices]
+    y_shuffled = y_full[indices]
+
+    train_size = int(len(x_shuffled) * train_ratio)
+
+    x = x_shuffled[:train_size]
+    y = y_shuffled[:train_size]
+
+    x_val = x_shuffled[train_size:]
+    y_val = y_shuffled[train_size:]
+
     params = np.ones((3, 1)) # (3, 1)
     params[0] = 0
-    x_matrix = np.hstack([ones_column, x]) # (1000, 3)
+    x_matrix = np.hstack([np.ones((len(x), 1)), x]) # (N, 3)
+    x_matrix_val = np.hstack([np.ones((len(x_val), 1)), x_val]) # (N, 3)
     updates = 0   
-    rng = np.random.default_rng(42)
 
     loss_history = []
+    val_loss_history = []
     for epoch in range(epochs):      
         indices = rng.permutation(len(x))   # перемешиваем индексы  
 
@@ -45,21 +58,26 @@ def train(x, y, batch_size, epochs, learning_rate, mse_limit):
 
         y_predicted = x_matrix @ params
         diff = (y_predicted.flatten() - y).reshape(-1, 1)
-        mse = np.mean(diff ** 2) 
-        loss_history.append(float(mse))
+        train_mse = np.mean(diff ** 2) 
+        loss_history.append(float(train_mse))
 
-        if not np.isfinite(mse):
-            return params, loss_history, epoch + 1, updates, False            
-        if mse <= mse_limit:
-            return params, loss_history, epoch + 1, updates, True            
+        y_val_predicted = x_matrix_val @ params
+        diff_val = (y_val_predicted.flatten() - y_val).reshape(-1, 1)
+        val_mse = np.mean(diff_val ** 2) 
+        val_loss_history.append(float(val_mse))
 
-    return params, loss_history, epochs, updates, False
+        if not np.isfinite(train_mse):
+            return params, loss_history, val_loss_history, epoch + 1, updates, False            
+        if train_mse <= mse_limit:
+            return params, loss_history, val_loss_history, epoch + 1, updates, True            
+
+    return params, loss_history, val_loss_history, epochs, updates, False
            
 for batch_size in [1000, 32, 1]:
     for learning_rate in [0.01, 0.1, 0.5, 1.0]:
         start = time.perf_counter()
 
-        weights, history, epochs, updates_count, success = train(x, y, batch_size, 1000, learning_rate, 0.0105)
+        weights, history, val_loss_history, epochs, updates_count, success = train(x, y, batch_size, 1000, learning_rate, 0.0105, 0.8)
 
         elapsed = time.perf_counter() - start
 
@@ -68,6 +86,7 @@ for batch_size in [1000, 32, 1]:
             "learning rate", learning_rate,
             "batch_size:", batch_size,
             "final MSE:", history[-1],
+            "final validation MSE:", val_loss_history[-1],
             "seconds:", elapsed,
             "epochs:", epochs,
             "updates count:", updates_count
