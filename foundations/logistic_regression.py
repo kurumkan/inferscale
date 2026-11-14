@@ -1,10 +1,10 @@
 import numpy as np
 
 
-def sigmoid(z):
+def sigmoid(z): # turn valuation into probability
     return 1.0 / (1.0 + np.exp(-z))
 
-def binary_cross_entropy(y, p):
+def binary_cross_entropy(y, p): # loss function
     loss = -(y @ np.log(p) + (1 - y) @ np.log(1 - p))
     return loss / len(p)
 
