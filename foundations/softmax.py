@@ -1,5 +1,20 @@
 import numpy as np
 
+# softmax algorithm
+# задача - оперделить категорию
+
+# Y [N]             ← 1 правильная категория для каждого кейса - содержит индексы правильных категорий для каждого кейса
+# X [N, D]          ← исходные признаки - у каждого z - свой набор весов
+#     ↓
+# Z = X @ W + b     ← линейный слой - вычисляем z - оценка вероятности
+#     ↓
+# Z [N, C]          ← logits
+#     ↓
+# P = softmax(Z)    ← Softmax - переводим z - в вероятности
+#     ↓
+# P [N, C]          ← вероятности классов
+
+
 def softmax(z): # finding probabilities    
     exp_z = np.exp(z)
     return exp_z / np.sum(exp_z, axis=1, keepdims=True)
