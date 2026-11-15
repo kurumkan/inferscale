@@ -33,7 +33,10 @@ def cross_entropy_from_logits(z, y):
     return np.mean(m + (np.log(np.sum(np.exp(z - m), axis=1)) - z[np.arange(len(z)), y]).reshape(-1,1))
 
 def softmax_cross_entropy_gradient(p, y):
-    return (p - np.eye(y.max() + 1, dtype=int)[y]) / len(p)
+    return (p - one_hot(y, p.shape[1])) / len(p)
+
+def one_hot(m, number_of_classes):
+    return np.eye(number_of_classes)[m]
 
 def forward(x, w, b):
     z = x @ w + b
@@ -45,11 +48,10 @@ def backward(x, p, y):
     # p: [N, C]
     # y: [N]
 
-    # 1. Вычислить градиент по logits (G)
-    # 2. Вычислить градиент по W
-    # 3. Вычислить градиент по b
-
-    return dw, db
+    grad_z = softmax_cross_entropy_gradient(p, y) # [N, C]
+    grad_w = x.T @ grad_z # [D, C]
+    grad_b = np.sum(p - one_hot(y, p.shape[1]), axis=0) / len(x) # [C]
+    return grad_w, grad_b
  
 p = np.array([
     [0.1, 0.2, 0.7],
@@ -94,13 +96,17 @@ x = np.array([
     [-1.0, -2.0],
     [-2.0, -1.0]
 ])
-
 w = np.array([
     [0.1, 0.2, -0.1],
     [0.3, -0.2, 0.1]
 ])
-
 b = np.array([0.1, 0.0, -0.1])
+z, p = forward(x, w, b)
 
-result = forward(x, w, b)
-print(result)
+# check backward
+y = np.array([0, 0, 2, 2])
+dw, db = backward(x, p, y)
+assert dw.shape == w.shape
+assert db.shape == b.shape
+assert np.all(np.isfinite(dw))
+assert np.all(np.isfinite(db))
