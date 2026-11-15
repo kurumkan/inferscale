@@ -19,6 +19,22 @@ def cross_entropy_from_logits(z, y):
 
 def softmax_cross_entropy_gradient(p, y):
     return (p - np.eye(y.max() + 1, dtype=int)[y]) / len(p)
+
+def forward(x, w, b):
+    z = x @ w + b
+    p = stable_softmax(z)
+    return z, p
+
+def backward(x, p, y):
+    # x: [N, D]
+    # p: [N, C]
+    # y: [N]
+
+    # 1. Вычислить градиент по logits (G)
+    # 2. Вычислить градиент по W
+    # 3. Вычислить градиент по b
+
+    return dw, db
  
 p = np.array([
     [0.1, 0.2, 0.7],
@@ -54,3 +70,22 @@ y = np.array([2, 2, 2])
 loss = cross_entropy_from_logits(z, y)
 assert np.isfinite(loss)
 assert np.isclose(loss, 0.4076059644, atol=1e-9)
+
+
+# check forward
+x = np.array([
+    [1.0, 2.0],
+    [2.0, 1.0],
+    [-1.0, -2.0],
+    [-2.0, -1.0]
+])
+
+w = np.array([
+    [0.1, 0.2, -0.1],
+    [0.3, -0.2, 0.1]
+])
+
+b = np.array([0.1, 0.0, -0.1])
+
+result = forward(x, w, b)
+print(result)
