@@ -153,6 +153,7 @@ print("Final accuracy:", accuracy)
 assert accuracy > 0.95
 
 # check gradients with finite differences
+# здесь больше проверка самих математических выражений, но не модели
 eps = 1e-5
 w_plus = w.copy()
 w_plus[0, 0] += eps
