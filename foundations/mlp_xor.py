@@ -40,6 +40,9 @@ def backward_pass(x, w1, b1, w2, b2, y):
 
     return (dl_dw1, dl_db1.flatten(), dl_dw2, dl_db2.item())
 
+def classify(predictions):
+    return (predictions >= 0.5).astype(float)
+
 eps = 1e-5
 
 x = np.array([
@@ -201,3 +204,6 @@ print("total average loss:", loss)
 for item in [w1, w2, b1, b2]:
     assert np.all(np.isfinite(item)), "Infinite value found"
     
+classified = classify(final_prediction)
+assert np.allclose(classified, y)    
+print("accuracy:", np.mean(y == classified))
