@@ -139,7 +139,7 @@ for idx in np.ndindex(b1.shape):
         rtol=0
     )
 
-# update weights
+# train
 for i in range(100):
     dl_dw1, dl_db1, dl_dw2, dl_db2 = backward_pass(x, w1, b1, w2, b2, y)
 
