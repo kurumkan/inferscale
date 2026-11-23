@@ -30,13 +30,32 @@ class Value:
     def __repr__(self):
         return "Value(data=" + str(self.data) + ")"
 
+def build_topo(root):
+    topo = []
+    visited = set()
+
+    def visit(node):
+        if node in visited:
+            return
+
+        for p in node.parents:
+            visit(p)
+        topo.append(node)
+        visited.add(node)
+
+    visit(root)
+    return topo
     
 a = Value(2)
 b = Value(3)
+p = a * b
+q = p + a
+loss = q * q # loss = a * b + a
 
-c = a + b
-c.grad = 1
-c._backward()
-
-assert a.grad == 1
-assert b.grad == 1
+topo = build_topo(loss)
+assert len(topo) == 5
+assert topo.index(a) < topo.index(p)
+assert topo.index(b) < topo.index(p)
+assert topo.index(p) < topo.index(q)
+assert topo.index(a) < topo.index(q)
+assert topo.index(q) < topo.index(loss)
