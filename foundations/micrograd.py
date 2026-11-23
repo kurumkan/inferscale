@@ -1,6 +1,7 @@
-# foundations of computation graph
+# autograd reverse engineered
 class Value:
     def __init__(self, data, parents=()):
+        self._backward = lambda: None
         self.data = data
         self.parents = parents
         self.grad = 0 # store gradient
@@ -27,35 +28,45 @@ class Value:
 
         return out
 
+    def backward(self):
+        topo = self.build_topo()
+        self.grad = 1
+
+        for node in reversed(topo):
+            node._backward()
+
+    def build_topo(self):
+        topo = []
+        visited = set()
+
+        def visit(node):
+            if node in visited:
+                return
+
+            visited.add(node)
+            for p in node.parents:
+                visit(p)
+            topo.append(node)
+
+        visit(self)
+        return topo
+                    
     def __repr__(self):
         return "Value(data=" + str(self.data) + ")"
 
-def build_topo(root):
-    topo = []
-    visited = set()
 
-    def visit(node):
-        if node in visited:
-            return
 
-        for p in node.parents:
-            visit(p)
-        topo.append(node)
-        visited.add(node)
-
-    visit(root)
-    return topo
-    
 a = Value(2)
 b = Value(3)
+
 p = a * b
 q = p + a
-loss = q * q # loss = a * b + a
+loss = q * q
 
-topo = build_topo(loss)
-assert len(topo) == 5
-assert topo.index(a) < topo.index(p)
-assert topo.index(b) < topo.index(p)
-assert topo.index(p) < topo.index(q)
-assert topo.index(a) < topo.index(q)
-assert topo.index(q) < topo.index(loss)
+loss.backward()
+
+assert loss.grad == 1
+assert q.grad == 16
+assert p.grad == 16
+assert a.grad == 64
+assert b.grad == 32
