@@ -10,11 +10,6 @@ class Value:
         def _backward():
             self.grad += out.grad * 1 # dl_da += dl_dout * dout_da
             other.grad += out.grad * 1
-            print("mul backward")
-            print(self.grad)
-            print(out.grad)
-            print(out.grad)
-            print(self.data)
         
         parents = (self, other)
         out = Value(self.data + other.data, parents)
@@ -26,11 +21,6 @@ class Value:
         def _backward():
             self.grad += out.grad * other.data # dl_da += dl_dout * dout_da
             other.grad += out.grad * self.data
-            print("mul backward")
-            print(self.grad)
-            print(out.grad)
-            print(out.grad)
-            print(self.data)
         
         parents = (self, other)
         out = Value(self.data * other.data, parents)
@@ -40,12 +30,7 @@ class Value:
 
     def __pow__(self, exponent):
         def _backward():
-            print("before pow backward", self.grad)
             self.grad += out.grad * exponent * self.data ** (exponent - 1)
-            print("pow backward", exponent)
-            print(self.grad)
-            print(out.grad)
-            print(self.data)
         
         parents = (self,)
         out = Value(self.data ** exponent, parents)
@@ -56,10 +41,6 @@ class Value:
     def relu(self):
         def _backward():
             self.grad += out.grad * float(self.data > 0)
-            print("relu backward")
-            print(self.grad)
-            print(out.grad)
-            print(self.data)
         
         parents = (self,)
         out = Value(max(0, self.data), parents)
@@ -73,17 +54,12 @@ class Value:
         topo = self.build_topo()
         self.grad = 1
 
-        print("backward")
-        print(self)
-        print(topo)
-
         for node in reversed(topo):
             node._backward()
 
     def zero_grad(self):
-        topo = self.build_topo()
-        self.grad = 1
-                
+        topo = self.build_topo()                
+
         for node in reversed(topo):
             node.grad = 0
 
@@ -101,31 +77,11 @@ class Value:
             topo.append(node)
 
         visit(self)
-        print("topology")
-        print(self)
-        print(topo)
         return topo
                     
     def __repr__(self):
         return "Value(data=" + str(self.data) + ")"
 
 
-x = Value(3)
-h = x.relu()
-loss = h ** 2
-
-loss.backward()
-
-assert x.grad == 6
-assert h.grad == 6
-
-loss.zero_grad()
-
-assert x.grad == 0
-assert h.grad == 0
-assert loss.grad == 0
-
-loss.backward()
-
-assert x.grad == 6
-assert h.grad == 6
+def numerical_grad(f, x, eps=1e-4):
+    return (f(x + eps) - f(x - eps)) / 2 / eps    
