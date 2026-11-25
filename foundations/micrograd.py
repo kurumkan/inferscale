@@ -90,7 +90,7 @@ def numerical_grad(f, x, eps=1e-4):
     return (f(x + eps) - f(x - eps)) / 2 / eps    
 
 class Neuron:
-    def __init__(self, nin):        
+    def __init__(self, nin, activation = "relu"):        
         # use He uniform, since Relu zeroing negative vals, breaking activation distribution
         limit = math.sqrt(6 / nin)
         self.weights = [
@@ -99,6 +99,7 @@ class Neuron:
         ]
 
         self.bias = Value(0.0)
+        self.activation = activation
 
     def __call__(self, inputs):
         result = Value(0)
@@ -107,12 +108,16 @@ class Neuron:
 
         result += self.bias            
 
-        return result.relu()
-
+        if self.activation == "relu":
+            return result.relu()
+        elif self.activation == "linear":
+            return result
+        else:
+            raise ValueError(f"Unknown activation: {self.activation}")
 
 class Layer:
-    def __init__(self, nin, nout):
-        self.neurons = [Neuron(nin) for _ in range(nout)]
+    def __init__(self, nin, nout, activation = "relu"):
+        self.neurons = [Neuron(nin, activation) for _ in range(nout)]
 
     def __call__(self, inputs):
         result = []
@@ -127,8 +132,12 @@ class MLP:
         self.layers = []
 
         input_count = nin
-        for output_count in nouts:
-            self.layers.append(Layer(input_count, output_count))
+        for i, output_count in enumerate(nouts):
+            is_last = i == len(nouts) - 1
+            if is_last:
+                self.layers.append(Layer(input_count, output_count, activation="linear"))
+            else:
+                self.layers.append(Layer(input_count, output_count, activation="relu"))                    
             input_count = output_count
 
     def __call__(self, inputs):
@@ -142,15 +151,54 @@ class MLP:
 
 
 random.seed(42)
-model = MLP(2, [3, 2, 1])
 
-assert len(model.layers) == 3
-assert [len(layer.neurons) for layer in model.layers] == [3, 2, 1]
-assert [len(layer.neurons[0].weights) for layer in model.layers] == [2, 3, 2]
-outputs = model([Value(2), Value(-1)])
+model = MLP(1, [3, 1])
 
-assert len(outputs) == 1
-assert isinstance(outputs[0], Value)
+dataset = [
+    (-1, -1),
+    (0, 1),
+    (1, 3),
+    (2, 5),
+]
 
-print("MLP structure PASS")
+learning_rate = 0.02
+epochs = 500
 
+initial_loss = None
+
+for epoch in range(epochs):
+    loss = Value(0)
+
+    for x_scalar, y_scalar in dataset:
+        x, y = (Value(x_scalar), Value(y_scalar))
+        prediction = model([x])
+        loss = loss + (y + prediction[0] * Value(-1)) ** 2 
+
+    if epoch == 0:
+        initial_loss = loss.data
+
+    loss.backward()
+
+    for layer in model.layers:
+        for neuron in layer.neurons:
+            for w in neuron.weights:
+                w.data -= learning_rate * w.grad
+
+            neuron.bias.data -= learning_rate * neuron.bias.grad    
+
+    if epoch % 100 == 0:
+        print(f"Epoch {epoch}: loss={loss.data:.6f}")
+
+# check results
+final_loss = 0.0
+
+for x, target in dataset:
+    prediction = model([Value(x)])[0].data
+    final_loss += (prediction - target) ** 2
+    print(f"x={x:2}, target={target:2}, prediction={prediction:.4f}")
+
+print("Initial loss:", initial_loss)
+print("Final loss:", final_loss)
+
+assert final_loss < initial_loss
+assert final_loss < 0.01
