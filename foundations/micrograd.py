@@ -90,9 +90,18 @@ def numerical_grad(f, x, eps=1e-4):
     return (f(x + eps) - f(x - eps)) / 2 / eps    
 
 class Neuron:
-    def __init__(self, nin, nout):
-        limit = math.sqrt(6 / (nin + nout))
-        self.weights = [Value(random.uniform(-limit, limit)) for _ in range(nin)]
+    def __init__(self, nin):
+        # xavier init - cannot be used, because of relu
+        # limit = math.sqrt(6 / (nin + nout))
+        # self.weights = [Value(random.uniform(-limit, limit)) for _ in range(nin)]
+
+        # use he uniform, since Relu zeroing negative vals, breaking activation distribution
+        limit = math.sqrt(6 / nin)
+        self.weights = [
+            Value(random.uniform(-limit, limit))
+            for _ in range(nin)
+        ]
+
         self.bias = Value(0.0)
 
     def __call__(self, inputs):
@@ -107,7 +116,7 @@ class Neuron:
 
 class Layer:
     def __init__(self, nin, nout):
-        self.neurons = [Neuron(nin, nout) for _ in range(nout)]
+        self.neurons = [Neuron(nin) for _ in range(nout)]
 
     def __call__(self, inputs):
         result = []
