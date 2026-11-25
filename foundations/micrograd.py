@@ -3,11 +3,12 @@ import math
 
 # autograd reverse engineered
 class Value:
-    def __init__(self, data, parents=()):
+    def __init__(self, data, parents=(), op=""):
         self._backward = lambda: None
         self.data = data
         self.parents = parents
-        self.grad = 0 # store gradient
+        self.grad = 0
+        self.op = op
 
     def __add__(self, other):
         def _backward():
@@ -15,7 +16,7 @@ class Value:
             other.grad += out.grad * 1
         
         parents = (self, other)
-        out = Value(self.data + other.data, parents)
+        out = Value(self.data + other.data, parents, op="+")
         out._backward = _backward    
 
         return out
@@ -26,7 +27,7 @@ class Value:
             other.grad += out.grad * self.data
         
         parents = (self, other)
-        out = Value(self.data * other.data, parents)
+        out = Value(self.data * other.data, parents, op="*")
         out._backward = _backward    
 
         return out
@@ -36,7 +37,7 @@ class Value:
             self.grad += out.grad * exponent * self.data ** (exponent - 1)
         
         parents = (self,)
-        out = Value(self.data ** exponent, parents)
+        out = Value(self.data ** exponent, parents, op=f"**{exponent}")
         out._backward = _backward    
 
         return out
@@ -46,7 +47,7 @@ class Value:
             self.grad += out.grad * float(self.data > 0)
         
         parents = (self,)
-        out = Value(max(0, self.data), parents)
+        out = Value(max(0, self.data), parents, op="ReLU")
         out._backward = _backward    
 
         return out
