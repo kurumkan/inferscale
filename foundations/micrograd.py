@@ -21,6 +21,18 @@ class Value:
 
         return out
 
+    def __sub__(self, other):  # self - other
+        return self + (-other)
+    
+    def __neg__(self):  # -self
+        def _backward():
+            self.grad += out.grad * -1
+
+        out = Value(-self.data, (self,), op="neg")
+        out._backward = _backward
+    
+        return out
+        
     def __mul__(self, other):
         def _backward():
             self.grad += out.grad * other.data # dl_da += dl_dout * dout_da
@@ -150,56 +162,56 @@ class MLP:
 
         return result
 
+if __name__ == "__main__":
+    random.seed(42)
 
-random.seed(42)
+    model = MLP(1, [3, 1])
 
-model = MLP(1, [3, 1])
+    dataset = [
+        (-1, -1),
+        (0, 1),
+        (1, 3),
+        (2, 5),
+    ]
 
-dataset = [
-    (-1, -1),
-    (0, 1),
-    (1, 3),
-    (2, 5),
-]
+    learning_rate = 0.02
+    epochs = 500
 
-learning_rate = 0.02
-epochs = 500
+    initial_loss = None
 
-initial_loss = None
+    for epoch in range(epochs):
+        loss = Value(0)
 
-for epoch in range(epochs):
-    loss = Value(0)
+        for x_scalar, y_scalar in dataset:
+            x, y = (Value(x_scalar), Value(y_scalar))
+            prediction = model([x])
+            loss = loss + (y + prediction[0] * Value(-1)) ** 2 
 
-    for x_scalar, y_scalar in dataset:
-        x, y = (Value(x_scalar), Value(y_scalar))
-        prediction = model([x])
-        loss = loss + (y + prediction[0] * Value(-1)) ** 2 
+        if epoch == 0:
+            initial_loss = loss.data
 
-    if epoch == 0:
-        initial_loss = loss.data
+        loss.backward()
 
-    loss.backward()
+        for layer in model.layers:
+            for neuron in layer.neurons:
+                for w in neuron.weights:
+                    w.data -= learning_rate * w.grad
 
-    for layer in model.layers:
-        for neuron in layer.neurons:
-            for w in neuron.weights:
-                w.data -= learning_rate * w.grad
+                neuron.bias.data -= learning_rate * neuron.bias.grad    
 
-            neuron.bias.data -= learning_rate * neuron.bias.grad    
+        if epoch % 100 == 0:
+            print(f"Epoch {epoch}: loss={loss.data:.6f}")
 
-    if epoch % 100 == 0:
-        print(f"Epoch {epoch}: loss={loss.data:.6f}")
+    # check results
+    final_loss = 0.0
 
-# check results
-final_loss = 0.0
+    for x, target in dataset:
+        prediction = model([Value(x)])[0].data
+        final_loss += (prediction - target) ** 2
+        print(f"x={x:2}, target={target:2}, prediction={prediction:.4f}")
 
-for x, target in dataset:
-    prediction = model([Value(x)])[0].data
-    final_loss += (prediction - target) ** 2
-    print(f"x={x:2}, target={target:2}, prediction={prediction:.4f}")
+    print("Initial loss:", initial_loss)
+    print("Final loss:", final_loss)
 
-print("Initial loss:", initial_loss)
-print("Final loss:", final_loss)
-
-assert final_loss < initial_loss
-assert final_loss < 0.01
+    assert final_loss < initial_loss
+    assert final_loss < 0.01
